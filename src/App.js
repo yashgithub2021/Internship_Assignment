@@ -12,7 +12,7 @@ function App() {
   return (
     <UserState>
       <BrowserRouter>
-        <Navbar></Navbar>
+        {/* <Navbar></Navbar> */}
         <Routes>
           <Route exact path='/' element={<Home />}></Route>
           <Route exact path='/signup' element={<Signup />}></Route>

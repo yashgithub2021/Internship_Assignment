@@ -1,10 +1,10 @@
 const express = require('express')
+const moment = require('moment');
 const User = require('../models/User')
 const router = express.Router()
 const { body, validationResult } = require('express-validator')
 const jwt = require('jsonwebtoken')
 const fetchUser = require('../middleware/getUser')
-
 const TOKEN = 'validator';
 
 //Create User
@@ -12,6 +12,7 @@ router.post('/createUser', [
     body('name', 'Enter a valid name').isLength({ min: 3 }),
     body('email', 'Enter a valid Email').isEmail(),
     body('password', 'Enter a valid password').isLength({ min: 5 }),
+    body('dob', 'Enter a valid Date of Birth')
 ], async (req, res) => {
     const errors = validationResult(req);
     let checkUser = false;
@@ -25,11 +26,19 @@ router.post('/createUser', [
             return res.status(400).json({ checkUser, error: 'Email Already Exist!' })
 
         }
+        const { dob } = req.body;
+        const formattedDob = moment(dob, 'YYYY-MM-DD', true); // Parse date in 'dd-mm-yyyy' format
+        if (!formattedDob.isValid()) {
+            throw new Error('Invalid Date of Birth. Please provide the date in the format dd-mm-yyyy.');
+        }
 
+        // Convert date to 'yyyy-mm-dd' format for MongoDB storage
+        const dobForDb = formattedDob.format('YYYY-MM-DD');
         user = await User.create({
             name: req.body.name,
             email: req.body.email,
             password: req.body.password,
+            dob: dobForDb,
         })
 
         const data = {
@@ -40,7 +49,7 @@ router.post('/createUser', [
 
         const jwtData = jwt.sign(data, TOKEN)
         success = true
-        res.json({ success, jwtData })
+        res.json({ success, jwtData, data })
     } catch (error) {
         console.error(error.message);
         res.status(500).send("Unexpected Error Occured")
@@ -126,7 +135,9 @@ router.get('/getUser', fetchUser, async (req, res) => {
     try {
         let userId = req.user.id
         const user = await User.findById(userId);
-        res.json(user)
+        let addId = req.user.id
+        const address = await Address.find({ user: addId })
+        res.json({ user, address })
     } catch (error) {
         console.error(error.message);
         res.status(500).send("An Unexpected Error Occured");
